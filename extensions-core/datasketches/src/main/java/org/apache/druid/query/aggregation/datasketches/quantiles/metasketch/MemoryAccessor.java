@@ -17,22 +17,24 @@
  * under the License.
  */
 
-package org.apache.druid.query.aggregation.datasketches.quantiles;
+package org.apache.druid.query.aggregation.datasketches.quantiles.metasketch;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import org.apache.datasketches.quantiles.DoublesSketch;
+import java.nio.ByteBuffer;
 
-import java.io.IOException;
-
-public class DoublesSketchJsonSerializer extends JsonSerializer<DoublesSketch>
+public interface MemoryAccessor<T>
 {
-  @Override
-  public void serialize(final DoublesSketch sketch, final JsonGenerator generator, final SerializerProvider provider)
-      throws IOException
+  void init(ByteBuffer byteBuffer, int position);
+
+  T wrap(ByteBuffer byteBuffer, int position);
+
+  default T initAndWrap(ByteBuffer byteBuffer, int position)
   {
-    generator.writeBinary(sketch.toByteArray(true));
+    init(byteBuffer, position);
+
+    return wrap(byteBuffer, position);
   }
 
+  void relocate(int oldPosition, int newPosition, ByteBuffer oldBuffer, ByteBuffer newBuffer);
+
+  void clear();
 }

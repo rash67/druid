@@ -17,22 +17,24 @@
  * under the License.
  */
 
-package org.apache.druid.query.aggregation.datasketches.quantiles;
+package org.apache.druid.query.aggregation.datasketches.quantiles.metasketch;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import org.apache.datasketches.quantiles.DoublesSketch;
+import java.nio.ByteBuffer;
 
-import java.io.IOException;
-
-public class DoublesSketchJsonSerializer extends JsonSerializer<DoublesSketch>
+public class BufferEncodingStateUpdateFunction implements StateUpdateFunction
 {
-  @Override
-  public void serialize(final DoublesSketch sketch, final JsonGenerator generator, final SerializerProvider provider)
-      throws IOException
+  private final ByteBuffer headerByteBuffer;
+  private final int position;
+
+  public BufferEncodingStateUpdateFunction(ByteBuffer headerByteBuffer, int position)
   {
-    generator.writeBinary(sketch.toByteArray(true));
+    this.headerByteBuffer = headerByteBuffer;
+    this.position = position;
   }
 
+  @Override
+  public void update(BufferEncoding bufferEncoding)
+  {
+    headerByteBuffer.put(position, bufferEncoding.toByte());
+  }
 }

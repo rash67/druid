@@ -22,11 +22,11 @@ package org.apache.druid.query.aggregation.datasketches.quantiles;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
-import org.apache.datasketches.quantiles.DoublesSketch;
 import org.apache.druid.java.util.common.IAE;
 import org.apache.druid.query.aggregation.AggregatorFactory;
 import org.apache.druid.query.aggregation.AggregatorUtil;
 import org.apache.druid.query.aggregation.PostAggregator;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.MetaDoublesSketch;
 import org.apache.druid.query.cache.CacheKeyBuilder;
 import org.apache.druid.segment.ColumnInspector;
 import org.apache.druid.segment.column.ColumnType;
@@ -82,13 +82,13 @@ public class DoublesSketchToQuantilesPostAggregator implements PostAggregator
   @Override
   public Object compute(final Map<String, Object> combinedAggregators)
   {
-    final DoublesSketch sketch = (DoublesSketch) field.compute(combinedAggregators);
+    final MetaDoublesSketch sketch = (MetaDoublesSketch) field.compute(combinedAggregators);
     if (sketch.isEmpty()) {
       final double[] quantiles = new double[fractions.length];
       Arrays.fill(quantiles, Double.NaN);
       return quantiles;
     }
-    return sketch.getQuantiles(fractions);
+    return sketch.asSketch().getQuantiles(fractions);
   }
 
   @Override

@@ -24,6 +24,7 @@ import org.apache.datasketches.quantiles.DoublesSketch;
 import org.apache.druid.java.util.common.ISE;
 import org.apache.druid.java.util.common.StringUtils;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 public class DoublesSketchOperations
@@ -56,4 +57,8 @@ public class DoublesSketchOperations
     return DoublesSketch.wrap(Memory.wrap(data));
   }
 
+  public static DoublesSketch deserializeFromByteBuffer(ByteBuffer byteBuffer)
+  {
+    return DoublesSketch.wrap(Memory.wrap(byteBuffer));
+  }
 }

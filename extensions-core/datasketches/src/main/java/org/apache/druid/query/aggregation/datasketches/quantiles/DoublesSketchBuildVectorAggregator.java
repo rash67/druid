@@ -19,8 +19,9 @@
 
 package org.apache.druid.query.aggregation.datasketches.quantiles;
 
-import org.apache.datasketches.quantiles.UpdateDoublesSketch;
 import org.apache.druid.query.aggregation.VectorAggregator;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.DoublesSketchBuildBufferMemoryAccessor;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.MetaDoublesSketch;
 import org.apache.druid.segment.vector.VectorValueSelector;
 
 import javax.annotation.Nullable;
@@ -29,6 +30,7 @@ import java.nio.ByteBuffer;
 public class DoublesSketchBuildVectorAggregator implements VectorAggregator
 {
   private final VectorValueSelector selector;
+  private final DoublesSketchBuildBufferMemoryAccessor updateSketchAccessor;
   private final DoublesSketchBuildBufferAggregatorHelper helper;
 
   DoublesSketchBuildVectorAggregator(
@@ -38,13 +40,17 @@ public class DoublesSketchBuildVectorAggregator implements VectorAggregator
   )
   {
     this.selector = selector;
-    this.helper = new DoublesSketchBuildBufferAggregatorHelper(size, maxIntermediateSize);
+    this.helper = new DoublesSketchBuildBufferAggregatorHelper(
+        size,
+        maxIntermediateSize - MetaDoublesSketch.MEMORY_BUFFER_HEADER_SIZE
+    );
+    updateSketchAccessor = new DoublesSketchBuildBufferMemoryAccessor(helper);
   }
 
   @Override
   public void init(final ByteBuffer buf, final int position)
   {
-    helper.init(buf, position);
+    MetaDoublesSketch.initNewBuffer(buf, position);
   }
 
   @Override
@@ -52,12 +58,15 @@ public class DoublesSketchBuildVectorAggregator implements VectorAggregator
   {
     final double[] doubles = selector.getDoubleVector();
     final boolean[] nulls = selector.getNullVector();
-
-    final UpdateDoublesSketch sketch = helper.getSketchAtPosition(buf, position);
+    MetaDoublesSketch metaDoublesSketch = MetaDoublesSketch.wrapMemoryBuffer(
+        buf,
+        position,
+        new DoublesSketchBuildBufferMemoryAccessor(helper)
+    );
 
     for (int i = startRow; i < endRow; i++) {
       if (nulls == null || !nulls[i]) {
-        sketch.update(doubles[i]);
+        metaDoublesSketch.update(doubles[i]);
       }
     }
   }
@@ -79,7 +88,9 @@ public class DoublesSketchBuildVectorAggregator implements VectorAggregator
 
       if (nulls == null || !nulls[idx]) {
         final int position = positions[i] + positionOffset;
-        helper.getSketchAtPosition(buf, position).update(doubles[idx]);
+        MetaDoublesSketch metaDoublesSketch = MetaDoublesSketch.wrapMemoryBuffer(buf, position, updateSketchAccessor);
+
+        metaDoublesSketch.update(doubles[idx]);
       }
     }
   }
@@ -93,12 +104,13 @@ public class DoublesSketchBuildVectorAggregator implements VectorAggregator
   @Override
   public void relocate(final int oldPosition, final int newPosition, final ByteBuffer oldBuf, final ByteBuffer newBuf)
   {
-    helper.relocate(oldPosition, newPosition, oldBuf, newBuf);
+    // TODO
+    updateSketchAccessor.relocate(oldPosition, newPosition, oldBuf, newBuf);
   }
 
   @Override
   public void close()
   {
-    helper.clear();
+    updateSketchAccessor.clear();
   }
 }

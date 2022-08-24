@@ -19,8 +19,9 @@
 
 package org.apache.druid.query.aggregation.datasketches.quantiles;
 
-import org.apache.datasketches.quantiles.UpdateDoublesSketch;
 import org.apache.druid.query.aggregation.BufferAggregator;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.DoublesSketchBuildBufferMemoryAccessor;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.MetaDoublesSketch;
 import org.apache.druid.query.monomorphicprocessing.RuntimeShapeInspector;
 import org.apache.druid.segment.BaseDoubleColumnValueSelector;
 
@@ -32,6 +33,7 @@ public class DoublesSketchBuildBufferAggregator implements BufferAggregator
 
   private final BaseDoubleColumnValueSelector selector;
   private final DoublesSketchBuildBufferAggregatorHelper helper;
+  private final DoublesSketchBuildBufferMemoryAccessor updateSketchAccessor;
 
   public DoublesSketchBuildBufferAggregator(
       final BaseDoubleColumnValueSelector valueSelector,
@@ -40,13 +42,17 @@ public class DoublesSketchBuildBufferAggregator implements BufferAggregator
   )
   {
     this.selector = valueSelector;
-    this.helper = new DoublesSketchBuildBufferAggregatorHelper(size, maxIntermediateSize);
+    this.helper = new DoublesSketchBuildBufferAggregatorHelper(
+        size,
+        maxIntermediateSize - MetaDoublesSketch.MEMORY_BUFFER_HEADER_SIZE
+    );
+    updateSketchAccessor = new DoublesSketchBuildBufferMemoryAccessor(helper);
   }
 
   @Override
   public void init(ByteBuffer buf, int position)
   {
-    helper.init(buf, position);
+    MetaDoublesSketch.initNewBuffer(buf, position);
   }
 
   @Override
@@ -56,15 +62,26 @@ public class DoublesSketchBuildBufferAggregator implements BufferAggregator
       return;
     }
 
-    final UpdateDoublesSketch sketch = helper.getSketchAtPosition(buffer, position);
-    sketch.update(selector.getDouble());
+    MetaDoublesSketch metaDoublesSketch = MetaDoublesSketch.wrapMemoryBuffer(
+        buffer,
+        position,
+        updateSketchAccessor
+    );
+
+    metaDoublesSketch.update(selector.getDouble());
   }
 
   @Nullable
   @Override
   public Object get(ByteBuffer buf, int position)
   {
-    return helper.get(buf, position);
+    MetaDoublesSketch metaDoublesSketch = MetaDoublesSketch.wrapMemoryBuffer(
+        buf,
+        position,
+        updateSketchAccessor
+    );
+
+    return metaDoublesSketch;
   }
 
   @Override
@@ -90,6 +107,7 @@ public class DoublesSketchBuildBufferAggregator implements BufferAggregator
   @Override
   public void relocate(int oldPosition, int newPosition, ByteBuffer oldBuffer, ByteBuffer newBuffer)
   {
+    //TODO: handle
     helper.relocate(oldPosition, newPosition, oldBuffer, newBuffer);
   }
 

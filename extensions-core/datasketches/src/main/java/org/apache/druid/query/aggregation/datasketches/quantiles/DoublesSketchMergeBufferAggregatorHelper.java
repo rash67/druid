@@ -25,6 +25,7 @@ import org.apache.datasketches.memory.DefaultMemoryRequestServer;
 import org.apache.datasketches.memory.MemoryRequestServer;
 import org.apache.datasketches.memory.WritableMemory;
 import org.apache.datasketches.quantiles.DoublesUnion;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.MetaDoublesSketch;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -57,7 +58,7 @@ public class DoublesSketchMergeBufferAggregatorHelper
 
   public Object get(final ByteBuffer buffer, final int position)
   {
-    return unions.get(buffer).get(position).getResult();
+    return MetaDoublesSketch.createFromUpdateSketch(unions.get(buffer).get(position).getResult());
   }
 
   public void clear()

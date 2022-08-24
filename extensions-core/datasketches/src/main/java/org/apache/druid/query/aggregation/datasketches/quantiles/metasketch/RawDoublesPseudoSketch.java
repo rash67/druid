@@ -17,22 +17,39 @@
  * under the License.
  */
 
-package org.apache.druid.query.aggregation.datasketches.quantiles;
+package org.apache.druid.query.aggregation.datasketches.quantiles.metasketch;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import org.apache.datasketches.quantiles.DoublesSketch;
+import org.apache.datasketches.quantiles.DoublesUnion;
+import org.apache.datasketches.quantiles.UpdateDoublesSketch;
+import org.apache.druid.segment.serde.cell.StorableBuffer;
 
-import java.io.IOException;
+import java.nio.ByteBuffer;
 
-public class DoublesSketchJsonSerializer extends JsonSerializer<DoublesSketch>
+public interface RawDoublesPseudoSketch extends StorableBuffer
 {
-  @Override
-  public void serialize(final DoublesSketch sketch, final JsonGenerator generator, final SerializerProvider provider)
-      throws IOException
-  {
-    generator.writeBinary(sketch.toByteArray(true));
-  }
+  void update(double value);
 
+  void checkAndUpdate(double value);
+
+  boolean hasSpace();
+
+  boolean hasSpaceFor(int count);
+
+  void pushInto(MetaDoublesUnion metaDoublesUnion);
+
+  void pushInto(DoublesUnion doublesUnion);
+
+  void pushInto(UpdateDoublesSketch updateDoublesSketch);
+
+  void pushInto(RawDoublesPseudoSketch otherPseudoSketch);
+
+  int getRawDoublesCount();
+
+  RawDoublesPseudoSketch onHeap();
+
+  @Override
+  void store(ByteBuffer byteBuffer);
+
+  @Override
+  int getSerializedSize();
 }

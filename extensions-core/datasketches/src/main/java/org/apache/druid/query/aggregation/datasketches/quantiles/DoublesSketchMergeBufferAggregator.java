@@ -21,6 +21,9 @@ package org.apache.druid.query.aggregation.datasketches.quantiles;
 
 import org.apache.datasketches.quantiles.DoublesSketch;
 import org.apache.druid.query.aggregation.BufferAggregator;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.DoublesUnionMergeBufferMemoryAccessor;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.MetaDoublesSketch;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.MetaDoublesUnion;
 import org.apache.druid.query.monomorphicprocessing.RuntimeShapeInspector;
 import org.apache.druid.segment.ColumnValueSelector;
 
@@ -30,6 +33,7 @@ public class DoublesSketchMergeBufferAggregator implements BufferAggregator
 {
   private final ColumnValueSelector<DoublesSketch> selector;
   private final DoublesSketchMergeBufferAggregatorHelper helper;
+  private final DoublesUnionMergeBufferMemoryAccessor doublesUnionAccessor;
 
   public DoublesSketchMergeBufferAggregator(
       final ColumnValueSelector<DoublesSketch> selector,
@@ -38,19 +42,26 @@ public class DoublesSketchMergeBufferAggregator implements BufferAggregator
   )
   {
     this.selector = selector;
-    this.helper = new DoublesSketchMergeBufferAggregatorHelper(k, maxIntermediateSize);
+    this.helper = new DoublesSketchMergeBufferAggregatorHelper(
+        k,
+        maxIntermediateSize - MetaDoublesSketch.MEMORY_BUFFER_HEADER_SIZE
+    );
+    doublesUnionAccessor = new DoublesUnionMergeBufferMemoryAccessor(helper);
   }
 
   @Override
   public void init(final ByteBuffer buffer, final int position)
   {
-    helper.init(buffer, position);
+    MetaDoublesUnion.initNewBuffer(buffer, position);
   }
 
   @Override
   public void aggregate(final ByteBuffer buffer, final int position)
   {
-    DoublesSketchMergeAggregator.updateUnion(selector, helper.getSketchAtPosition(buffer, position));
+    DoublesSketchMergeAggregator.updateMetaUnion(
+        selector,
+        MetaDoublesUnion.wrapMemoryBuffer(buffer, position, doublesUnionAccessor)
+    );
   }
 
   @Override
@@ -82,6 +93,7 @@ public class DoublesSketchMergeBufferAggregator implements BufferAggregator
   @Override
   public synchronized void relocate(int oldPosition, int newPosition, ByteBuffer oldBuffer, ByteBuffer newBuffer)
   {
+    // TODO
     helper.relocate(oldPosition, newPosition, oldBuffer, newBuffer);
   }
 

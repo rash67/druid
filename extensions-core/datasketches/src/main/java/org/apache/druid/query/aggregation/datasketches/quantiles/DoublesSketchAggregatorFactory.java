@@ -34,6 +34,8 @@ import org.apache.druid.query.aggregation.AggregatorUtil;
 import org.apache.druid.query.aggregation.BufferAggregator;
 import org.apache.druid.query.aggregation.ObjectAggregateCombiner;
 import org.apache.druid.query.aggregation.VectorAggregator;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.MetaDoublesSketch;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.MetaDoublesSketchUtil;
 import org.apache.druid.query.cache.CacheKeyBuilder;
 import org.apache.druid.segment.BaseDoubleColumnValueSelector;
 import org.apache.druid.segment.ColumnInspector;
@@ -213,7 +215,7 @@ public class DoublesSketchAggregatorFactory extends AggregatorFactory
   @Override
   public Object deserialize(final Object object)
   {
-    return DoublesSketchOperations.deserialize(object);
+    return MetaDoublesSketchUtil.deserialize(object);
   }
 
   @Override
@@ -359,7 +361,7 @@ public class DoublesSketchAggregatorFactory extends AggregatorFactory
   @Override
   public Object finalizeComputation(@Nullable final Object object)
   {
-    return object == null ? null : ((DoublesSketch) object).getN();
+    return object == null ? null : ((MetaDoublesSketch) object).asSketch().getN();
   }
 
   /**

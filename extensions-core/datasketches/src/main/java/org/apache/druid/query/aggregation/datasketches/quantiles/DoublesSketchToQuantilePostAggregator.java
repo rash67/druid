@@ -23,10 +23,10 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
-import org.apache.datasketches.quantiles.DoublesSketch;
 import org.apache.druid.query.aggregation.AggregatorFactory;
 import org.apache.druid.query.aggregation.AggregatorUtil;
 import org.apache.druid.query.aggregation.PostAggregator;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.MetaDoublesSketch;
 import org.apache.druid.query.cache.CacheKeyBuilder;
 import org.apache.druid.segment.ColumnInspector;
 import org.apache.druid.segment.column.ColumnType;
@@ -82,8 +82,8 @@ public class DoublesSketchToQuantilePostAggregator implements PostAggregator
   @Override
   public Object compute(final Map<String, Object> combinedAggregators)
   {
-    final DoublesSketch sketch = (DoublesSketch) field.compute(combinedAggregators);
-    return sketch.getQuantile(fraction);
+    final MetaDoublesSketch sketch = (MetaDoublesSketch) field.compute(combinedAggregators);
+    return sketch.asSketch().getQuantile(fraction);
   }
 
   @Override

@@ -17,22 +17,40 @@
  * under the License.
  */
 
-package org.apache.druid.query.aggregation.datasketches.quantiles;
+package org.apache.druid.query.aggregation.datasketches.quantiles.metasketch;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import org.apache.datasketches.quantiles.DoublesSketch;
+import com.google.common.base.Preconditions;
+import org.apache.druid.java.util.common.IAE;
 
-import java.io.IOException;
-
-public class DoublesSketchJsonSerializer extends JsonSerializer<DoublesSketch>
+public enum BufferEncoding
 {
-  @Override
-  public void serialize(final DoublesSketch sketch, final JsonGenerator generator, final SerializerProvider provider)
-      throws IOException
+  RAW_DOUBLES,
+  UPDATE_SKETCH,
+  SKETCH,
+  UNION;
+
+  public byte toByte()
   {
-    generator.writeBinary(sketch.toByteArray(true));
+    int ordinal = ordinal();
+
+    Preconditions.checkState(ordinal <= 255);
+
+    return (byte) ((0xff) & ordinal);
   }
 
+  public static BufferEncoding fromOrdinal(int value)
+  {
+    switch (value) {
+      case 0:
+        return BufferEncoding.RAW_DOUBLES;
+      case 1:
+        return BufferEncoding.UPDATE_SKETCH;
+      case 2:
+        return BufferEncoding.SKETCH;
+      case 3:
+        return BufferEncoding.UNION;
+      default:
+        throw new IAE("invalid %s encoding %s", MetaDoublesSketch.class.getName(), value);
+    }
+  }
 }

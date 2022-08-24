@@ -20,8 +20,9 @@
 package org.apache.druid.query.aggregation.datasketches.quantiles;
 
 import org.apache.datasketches.quantiles.DoublesSketch;
-import org.apache.datasketches.quantiles.UpdateDoublesSketch;
 import org.apache.druid.query.aggregation.Aggregator;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.HeapRawDoublesPseudoSketch;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.MetaDoublesSketch;
 import org.apache.druid.segment.ColumnValueSelector;
 
 import javax.annotation.Nullable;
@@ -30,29 +31,33 @@ public class DoublesSketchBuildAggregator implements Aggregator
 {
 
   private final ColumnValueSelector<Double> valueSelector;
-
   @Nullable
-  private UpdateDoublesSketch sketch;
+  private MetaDoublesSketch metaDoublesSketch;
 
   public DoublesSketchBuildAggregator(final ColumnValueSelector<Double> valueSelector, final int size)
   {
     this.valueSelector = valueSelector;
-    sketch = DoublesSketch.builder().setK(size).build();
+    metaDoublesSketch = MetaDoublesSketch.createFromRawDoubles(
+        HeapRawDoublesPseudoSketch.newDefaultMaxSizeInstance(),
+        () -> DoublesSketch.builder().setK(size).build()
+    );
   }
 
+  @SuppressWarnings("ConstantConditions")
   @Override
   public synchronized void aggregate()
   {
     if (valueSelector.isNull()) {
       return;
     }
-    sketch.update(valueSelector.getDouble());
+
+    metaDoublesSketch.update(valueSelector.getDouble());
   }
 
   @Override
   public synchronized Object get()
   {
-    return sketch;
+    return metaDoublesSketch;
   }
 
   @Override
@@ -70,6 +75,6 @@ public class DoublesSketchBuildAggregator implements Aggregator
   @Override
   public synchronized void close()
   {
-    sketch = null;
+    metaDoublesSketch = null;
   }
 }

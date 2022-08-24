@@ -19,37 +19,40 @@
 
 package org.apache.druid.query.aggregation.datasketches.quantiles;
 
-import org.apache.datasketches.quantiles.DoublesSketch;
 import org.apache.datasketches.quantiles.DoublesUnion;
+import org.apache.druid.java.util.common.UOE;
 import org.apache.druid.query.aggregation.Aggregator;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.MetaDoublesSketch;
+import org.apache.druid.query.aggregation.datasketches.quantiles.metasketch.MetaDoublesUnion;
 import org.apache.druid.segment.ColumnValueSelector;
 
 import javax.annotation.Nullable;
 
 public class DoublesSketchMergeAggregator implements Aggregator
 {
-
-  private final ColumnValueSelector selector;
+  private final ColumnValueSelector<?> selector;
   @Nullable
-  private DoublesUnion union;
+  private MetaDoublesUnion union;
 
-  public DoublesSketchMergeAggregator(final ColumnValueSelector selector, final int k)
+  public DoublesSketchMergeAggregator(final ColumnValueSelector<?> selector, final int k)
   {
     this.selector = selector;
-    union = DoublesUnion.builder().setMaxK(k).build();
+    union = MetaDoublesUnion.createFromUnion(DoublesUnion.builder().setMaxK(k).build());
   }
 
+  @SuppressWarnings("ConstantConditions")
   @Override
   public synchronized void aggregate()
   {
-    updateUnion(selector, union);
+    updateMetaUnion(selector, union);
   }
 
 
+  @SuppressWarnings("ConstantConditions")
   @Override
   public synchronized Object get()
   {
-    return union.getResult();
+    return union.toMetaDoublesSketch();
   }
 
   @Override
@@ -70,16 +73,16 @@ public class DoublesSketchMergeAggregator implements Aggregator
     union = null;
   }
 
-  static void updateUnion(ColumnValueSelector selector, DoublesUnion union)
+  static void updateMetaUnion(ColumnValueSelector<?> selector, MetaDoublesUnion union)
   {
     final Object object = selector.getObject();
     if (object == null) {
       return;
     }
-    if (object instanceof DoublesSketch) {
-      union.update((DoublesSketch) object);
+    if (object instanceof MetaDoublesSketch) {
+      ((MetaDoublesSketch) object).pushInto(union);
     } else {
-      union.update(selector.getDouble());
+      throw new UOE("removed handling of double in DoublesSketch Merge* aggregators as it appeared unnecessary");
     }
   }
 }
