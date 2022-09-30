@@ -83,7 +83,7 @@ public interface StagedSerde<T>
    * @param value - object to serialize
    * @return serialized byte[] of value
    */
-  default byte[] serialize(T value)
+  default byte[] serialize(@Nullable T value)
   {
     StorableBuffer storableBuffer = serializeDelayed(value);
     ByteBuffer byteBuffer = ByteBuffer.allocate(storableBuffer.getSerializedSize()).order(ByteOrder.nativeOrder());
@@ -96,6 +96,7 @@ public interface StagedSerde<T>
   @Nullable
   T deserialize(ByteBuffer byteBuffer);
 
+  @Nullable
   default T deserialize(byte[] bytes)
   {
     return deserialize(ByteBuffer.wrap(bytes).order(ByteOrder.nativeOrder()));
