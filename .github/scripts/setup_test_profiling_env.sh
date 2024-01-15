@@ -25,9 +25,11 @@ if [ "$#" -ne 5 ]; then
     echo "usage: $0 <jdk_version> <run_id> <run_number> <run_attempt> <module>"
 fi
 
-if [[ "$1" == "17" ]];
-then
+if [[ "$1" -ge "17" ]]; then
   curl https://static.imply.io/cp/$JAR_INPUT_FILE -s -o $JAR_OUTPUT_FILE
+
+  # Extract the java major version number
+  JAVA_MAJOR="$(java -version 2>&1 | sed -n -E 's/.* version "([^."-]*).*/\1/p')"
 
   echo $ENV_VAR=-javaagent:"$PWD"/$JAR_OUTPUT_FILE \
   -Djfr.profiler.http.username=druid-ci \
@@ -36,7 +38,8 @@ then
   -Djfr.profiler.tags.run_id=$2 \
   -Djfr.profiler.tags.run_number=$3 \
   -Djfr.profiler.tags.run_attempt=$4 \
-  -Djfr.profiler.tags.module=$5
+  -Djfr.profiler.tags.module=$5 \
+  -Djfr.profiler.tags.jvm_version=$jvm_version
 else
   echo $ENV_VAR=\"\"
 fi
